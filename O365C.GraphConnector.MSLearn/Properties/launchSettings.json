@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "O365C.GraphConnector.MSLearn": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7232",
+      "launchBrowser": false
+    }
+  }
+}
