@@ -18,11 +18,13 @@ namespace O365C.GraphConnector.MSLearn
     {
         private readonly IGraphService _graphService;
         private readonly ILearnCatalogService _learnCatalogService;
-        public IngestContent(IGraphService graphService, ILearnCatalogService learnCatalogService)
+        private readonly IAccessTokenProvider _accessTokenProvider;
+
+        public IngestContent(IGraphService graphService, ILearnCatalogService learnCatalogService, IAccessTokenProvider accessTokenProvider)
         {
             _graphService = graphService;
             _learnCatalogService = learnCatalogService;
-            
+            _accessTokenProvider = accessTokenProvider;
         }
         [FunctionName("IngestContent")]
         public async Task<IActionResult> Run(
@@ -36,6 +38,35 @@ namespace O365C.GraphConnector.MSLearn
             log.LogInformation("Loading modules...");
             List<Module> modules = await _learnCatalogService.GetModulesAsync();
             log.LogInformation("Loaded");
+
+            //Get access token
+            var accessToken = await _accessTokenProvider.GetAccessTokenAsync();
+            if (accessToken == null)
+            {
+                log.LogError("Access token is null");
+                return new UnauthorizedResult();
+            }
+
+            //ingest modules
+            log.LogInformation("Ingesting modules...");
+
+            for (int i = 0; i < modules.Count; i++)
+            {
+                var module = modules[i];
+                log.LogInformation(string.Format("Loading item {0}:{1})...", i + 1,module.Title));
+                 try
+                {
+                    await _graphService.CreateItemAsync(module, accessToken);
+                    log.LogInformation("DONE");
+
+                }
+                catch (Exception ex)
+                {
+                    log.LogError("ERROR");
+                    log.LogError(ex.Message);
+                    throw;
+                }
+            }          
 
 
             return new OkObjectResult(modules);
